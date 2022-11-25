@@ -12,8 +12,12 @@ library(vip)
 library(caret)
 library(pROC)
 library(nnet)
+
 library(parallel)
+library(foreach)
+library(iterators)
 library(doParallel)
+
 library(forecast)
 library(pls)
 library(zoo)
@@ -66,7 +70,7 @@ length(data_2014c)
 mean(is.na(data_2014c))
 
 data_2015c <- na.omit(data2015)  # same same for the 2015 financial dataset
-count(data_2014c, "Class")
+count(data_2015c, "Class")
 dim(data_2015c)
 
 data_2016c <- na.omit(data2016)  # same same for the 2016 financial dataset
@@ -212,9 +216,9 @@ rm(mean_data2018)
 
 
 
-### Dealing with collinearity and multicollinearity
-## remove stock price variance column to prevent perfect multicollinearity
-## for all of the datasets I will use for my regressions
+### Dealing with collinearity and multicollinearity:
+## remove stock price variance column to prevent perfect multicollinearity...
+# ... for all of the datasets I will use for my regressions
 pr_var2014 <- data2014$X2015.PRICE.VAR....
 pr_var2015 <- data2015$X2016.PRICE.VAR....
 pr_var2016 <- data2016$X2017.PRICE.VAR....
@@ -226,7 +230,7 @@ data2016 <- subset(data2016, select = -c(X2017.PRICE.VAR....))
 data2017 <- subset(data2017, select = -c(X2018.PRICE.VAR....))
 data2018 <- subset(data2018, select = -c(X2019.PRICE.VAR....))
 
-# for all the datasets I will use for classification
+# ... for all the datasets I will use for classification
 pr_var2014c <- data_2014c$X2015.PRICE.VAR....
 pr_var2015c <- data_2015c$X2016.PRICE.VAR....
 pr_var2016c <- data_2016c$X2017.PRICE.VAR....
@@ -239,24 +243,26 @@ data_2017c <- subset(data_2017c, select = -c(X2018.PRICE.VAR....))
 data_2018c <- subset(data_2018c, select = -c(X2019.PRICE.VAR....))
 
 
-## find and remove highly correlated predictors in each dataset
-correlationsR <- cor(data2014)
-correlationsC <- cor(data_2014c)
+## find and remove all predictors which are highly correlated in 
+## the 2014 dataset from every dataset
+correlations_R <- cor(data2014)
+correlations_C <- cor(data_2014c)
 
-highCorrR <- findCorrelation(correlationsR, cutoff = .8)
-highCorrC <- findCorrelation(correlationsC, cutoff = .8)
+highCorr_R <- findCorrelation(correlations_R, cutoff = .8)
+highCorr_C <- findCorrelation(correlations_C, cutoff = .8)
 
-data2014 <- data2014[, -highCorrR]
-data2015 <- data2015[, -highCorrR]
-data2016 <- data2016[, -highCorrR]
-data2017 <- data2017[, -highCorrR]
-data2018 <- data2018[, -highCorrR]
+data2014 <- data2014[, -highCorr_R]
+data2015 <- data2015[, -highCorr_R]
+data2016 <- data2016[, -highCorr_R]
+data2017 <- data2017[, -highCorr_R]
+data2018 <- data2018[, -highCorr_R]
 
-data_2014c <- data_2014c[, -highCorrC]
-data_2015c <- data_2015c[, -highCorrC]
-data_2016c <- data_2016c[, -highCorrC]
-data_2017c <- data_2017c[, -highCorrC]
-data_2018c <- data_2018c[, -highCorrC]
+data_2014c <- data_2014c[, -highCorr_C]
+data_2015c <- data_2015c[, -highCorr_C]
+data_2016c <- data_2016c[, -highCorr_C]
+data_2017c <- data_2017c[, -highCorr_C]
+data_2018c <- data_2018c[, -highCorr_C]
+
 
 
 # define model controls
@@ -270,19 +276,24 @@ ctrl <- trainControl(method = "LGOCV", summaryFunction = twoClassSummary,
 
 
 
-##### Part 3: Forecasting US Stock Behavior via Classification Modeling
-#####         Creating several financial forecasting models which 
-#####         generate objectively comparable predictions. 
-#####         Important note: when our comments say that some predict() is comparing
-#####         the expected classification in 2015 vs the observed classification in 
-#####         2015, that just means the degree to which stocks our model predicted would go up
-#####         (in 2015 based on how it was trained & cross-validated on the 2014 data)
-#####         actually went up. And likewise, the degree to which stocks our model 
+##### Part 3: Forecasting US Stock Behavior via Classification Modeling:
+#####         Creating 6.5 classification forecasting models which generate 
+#####         objectively comparable predictions. The 6.5 classification 
+#####         predictive modeling methods I chose are: Logit, PLS-DA,
+#####         Elastic Net, an Artificial Neural Network, an Average (of several) 
+#####         Neural Networks, Support Vector Machines, and KNN.
+#####         Important note: when our comments say that some predict() is 
+#####         comparing the expected classification in 2015 (given a model 
+#####         trained on the data from 2014) vs the observed classification 
+#####         in 2015, that just means the degree to which stocks that 
+#####         our model predicted would go up (in 2015 based on how 
+#####         it was trained & cross-validated on the 2014 data) actually
+#####         went up. And likewise, the degree to which stocks our model 
 #####         predicted would go down in 2015 actually did go down.
 
 
 ### Classification Forecasting Model #1: Logit
-# set a seed to ensure the replicability of our predictions
+# set a random seed to ensure the replicability of our predictions
 set.seed(100)          # use the same seed for every model
 ftLogitC1 <- train(x = data_2014c, y = class2014c, method = "glm",
                  metric = "ROC", preProcess = c("center", "scale"),
@@ -344,11 +355,11 @@ PLSDA_C1_CFM <- confusionMatrix(data = PLS_C1predict, reference = class2015c,
                                 positive = "Increase")
 PLSDA_C1_CFM
 
-PLSDA_C1prob <- predict(ftPLS_C1, data_2015c, type = "prob")
+PLSDA_C1prob2015 <- predict(ftPLS_C1, data_2015c, type = "prob")
 PLSDA_C1prob2017 <- predict(ftPLS_C1, data_2017c, type = "prob")
 
 # create an ROC curve for our PLS-DA model and store it in an object
-rocPLSDA_C1 <- roc(response = class2015c, predictor = PLSDA_C1prob$Increase,
+rocPLSDA_C1 <- roc(response = class2015c, predictor = PLSDA_C1prob2015$Increase,
               levels = rev(levels(class2015c)))
 
 # show the plot of that ROC curve for our PLS regression
@@ -505,7 +516,7 @@ plot(impAVNNet_c1, top = 10, main = 'Variable Importance for Average Neural Netw
 
 
 
-### Classification Forecasting Model #6: Support Vector Machine
+### Classification Forecasting Model #5: Support Vector Machine
 library(kernlab)
 set.seed(100)
 svmGrid = expand.grid(.sigma = c(0, 0.01, 0.1), .C = 1:10)
@@ -545,7 +556,7 @@ cat('Area under the ROC curve for our Support Vector Machine model: ',
 
 
 
-### Classification Forecasting Model #7: K-Nearest Neighbors 
+### Classification Forecasting Model #6: K-Nearest Neighbors 
 set.seed(100)
 knnC1_Model = train(x = data_2014c, y = class2014c, method = "knn",
                  preProc = c("center","scale"), tuneLength = 20)
@@ -604,18 +615,32 @@ knnC1_CFM            # the confusion matrix for our K-Nearest Neighbors model
 
 
 
-###### Part 4: Forecasting US Stock Behavior via Regression Modeling
+###### Part 5: Forecasting US Stock Behavior via Regression Modeling
 ######         Regression Methods used: Partial Least Squares Regression, 
-######         MARS, Ridge Regression, Random Forest Regression, 
-######         Artificial Neural Networks, Average Neural Networks, 
+######         Ridge Regression, MARS, Artificial Neural Networks,
+######         Average Neural Networks, Random Forest Regression, 
 ######         and a custom MLR Specification I constructed myself
 
-### Classification Forecasting Model #5: Multivariate Adaptive Regression Splines
+### Regression Forecasting Model #1: Partial Least Squares Regression
+
+
+
+
+### Regression Forecasting Model #2: Ridge Regression
+
+
+
+
+### Regression Forecasting Model #3: Multivariate Adaptive Regression Splines
 library(earth)
+library(Formula)
 library(plotmo)
 library(plotrix)
+library(earth)
 marsGrid = expand.grid(.degree = 1:2, .nprune = 2:38)
 set.seed(100)
+# try using the train function from the caret package, and  
+# setting the method argument equal to "earth".
 marsModelR1 = train(x = data2014, y = pr_var2014, method = "earth", 
                     preProc = c("center", "scale"), tuneGrid = marsGrid)
 marsModelR1
@@ -624,6 +649,7 @@ marsModelR1
 marsR1Pred = predict(marsModelR1, newdata = data2015)
 length(marsR1Pred)
 dim(marsR1Pred)
+str(marsR1Pred)
 marsR1Pred_2016 = predict(marsModelR1, newdata = data2016)  # same as above for 2016
 marsR1Pred_2017 = predict(marsModelR1, newdata = data2017)  # same as above for 2017
 marsR1Pred_2018 = predict(marsModelR1, newdata = data2018)  # same as above for 2018
@@ -631,27 +657,23 @@ marsR1Pred_2018 = predict(marsModelR1, newdata = data2018)  # same as above for 
 marsR1_PR = postResample(pred = marsR1Pred, obs = pr_var2014)
 marsR1_PR
 
-# assess the prediction performance metrics for our Multivariate Adaptive 
-# Regression Splines model via a confusion matrix
-dim(pr_var2014)
-marsModelR1_CFM <- confusionMatrix(data = marsR1Pred, 
-                                   reference = sample(pr_var2014, length(marsR1Pred)),
-                                   positive = "Increase")
-marsModelR1_CFM <- confusionMatrix(data = marsR1Pred, 
-                                   reference = sample(pr_var2014, 4120),
-                                   positive = "Increase")
-marsModelR1_CFM
+
+# try using the earth function from the earth package instead
+marsFits_2014 = earth(x = data2014, y = pr_var2014, penalty = 3)
+marsFits_2014
+summary(marsFits_2014)
+
+marsPred_2014 = predict(marsFits_2014, newdata = data2015)
+marsPred_2014
+
+marsPR_2014 = postResample(pred = marsFits_2014, obs = pr_var2014)
+marsPR_2014
 
 
-marsR1_Prob <- predict(marsModelR1, data2015, type = "prob")
 
-marsR1_ROC <- roc(response = pr_var2014, predictor = marsR1_Prob$Increase,
-                  levels = rev(levels(class2015c)))
-
-plot(marsR1_ROC, col = "red", lwd = 3, main = "ROC curve for our MARS model")
-
-# calculate the area under the above ROC curve
-auc_R2 <- auc(marsR1_ROC)
-cat('Area under the ROC curve for our MARS model: ', round(auc_R2, 4))
+### Regression Forecasting Model #4: Artificial Neural Network
 
 
+
+
+### Regression Forecasting Model #4.5: Average (of several) Neural Networks
