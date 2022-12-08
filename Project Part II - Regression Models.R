@@ -211,7 +211,7 @@ data2014r <- cbind(data2014, pr_var2014)
 data2015r <- cbind(data2015, pr_var2015)
 data2016r <- cbind(data2016, pr_var2016)
 data2017r <- cbind(data2017, pr_var2017)
-data2018r <- cbind(data2018, pr_var2018)s
+data2018r <- cbind(data2018, pr_var2018)
 
 
 
@@ -229,18 +229,19 @@ data2018r <- cbind(data2018, pr_var2018)s
 ######          Regression Methods used: Partial Least Squares Regression, 
 ######          Ridge Regression, MARS, Artificial Neural Networks,
 ######          Average Neural Networks, SVM, Random Forest Regression, 
-######          and a custom MLR Specification I constructed myself
-
+######          and a custom MLR Specification I constructed myself.
 
 ### Regression Forecasting Model #1: Partial Least Squares Regression
 library(pls)
-pls1Fit <- 
+#pls1Fit <- 
+
+
 
 
   
 
 ### Regression Forecasting Model #2: Ridge Regression
-## method 1 (of 2): using the glmnet package
+## method 1 (of 3): using the glmnet package
 library(Matrix)
 library(glmnet)
 #grid1 <- 
@@ -260,27 +261,57 @@ length(pr_var2014)
 mean((pr_var2014 - sample(ridge1.pred, 3808))^2)
 
 
-## method 2 (of 2): using the MASS & elasticnet packages
+
+## method 2 (of 3): using the MASS & elasticnet packages
 library(MASS)
 library(elasticnet)
-ridge1 <- enet(x = as.matrix(data2014), y = pr_var2014, lambda = 1)
+ridge1 <- enet(x = as.matrix(data2014), y = pr_var2014, lambda = 0.01)
 ridge1
 summary(ridge1)
 class(ridge1)
 
 ridge1Preds <- predict(ridge1, newx = as.matrix(data2015), s = 1, 
-                       mode = "fraction")
+                       mode = "fraction", type = "fit")
 ridge1Preds
+names(ridge1Preds)
 length(ridge1Preds$fit)
+head(ridge1Preds$fit)
 mean((pr_var2014 - sample(ridge1Preds$fit, 3808))^2)
 
+ridge1Coef<-predict(ridge1, newx = as.matrix(data2015), s = 1, 
+                     mode = "fraction", type = "coefficients")
+Ridge1Coefs = ridge1Coef$coefficients
 
 
+
+## method 3 (of 3): using the standard train() function with
+## the method argument set equal to "ridge", the tuneGrid 
+## argument set equal to ridgeGrid, maybe trControl = ctrl, 
+## and preProc = c("center", "scale"))
+glmnGrid <- expand.grid(.alpha = c(0, .1, .2, .4, .6, .8, 1), 
+                         .lambda = seq(.01, .2, length = 40))
+
+grid = 10^seq(10, -2, length = 100)
+
+RReg1_ctrl <- trainControl(method = "cv", number = 10)
+ridgeGrid <- data.frame(.lambda = seq(0, .1, length = 15))
+
+set.seed(100)
+ridgeReg1Fit <- train(x = data2014matrix, pr_var2015,
+                      method = "ridge",
+                      ## Fir the model over many penalty values
+                      tuneGrid = ridgeGrid,
+                      trControl = ctrl,
+                      ## put the predictors on the same scale
+                      preProc = c("center", "scale"))
+ridgeReg1Fit
+  
+
+  
 
 
 
 ### Regression Forecasting Model #3: Multivariate Adaptive Regression Splines
-library(earth)
 library(Formula)
 library(plotmo)
 library(plotrix)
@@ -302,20 +333,21 @@ marsR1Pred_2016 = predict(marsModelR1, newdata = data2016)  # same as above for 
 marsR1Pred_2017 = predict(marsModelR1, newdata = data2017)  # same as above for 2017
 marsR1Pred_2018 = predict(marsModelR1, newdata = data2018)  # same as above for 2018
 
-marsR1_PR = postResample(pred = marsR1Pred, obs = pr_var2014)
+marsR1_PR = postResample(pred = marsR1Pred2015, obs = pr_var2016)
 marsR1_PR
 
 
 # try using the earth function from the earth package instead
-marsFits_2014 = earth(x = data2014, y = pr_var2014, penalty = 3)
+marsFits_2014 = earth(x = data2014, y = pr_var2015, penalty = 3)
 marsFits_2014
 summary(marsFits_2014)
 
 marsPred_2014 = predict(marsFits_2014, newdata = data2015)
 marsPred_2014
 
-marsPR_2014 = postResample(pred = marsFits_2014, obs = pr_var2014)
+marsPR_2014 = postResample(pred = marsFits_2014, obs = pr_var2016)
 marsPR_2014
+
 
 
 
@@ -425,6 +457,7 @@ set.seed(100)
 library(randomForest)
 
 set.seed(11)
+set.seed(100)
 RFR_R1 = randomForest(pr_var2014 ~ ., data = data2014, ntree = 110) 
 class(RFR_R1)
 
@@ -452,3 +485,33 @@ varImpPlot(RFreg.2014)
 
 
 ### Regression Forecasting Model #7: Traditional Multiple Regression Model
+
+# Fit/estimate/train a Multivariate Linear Regression specification
+# of my own design to the observations in the data on stock market 
+# predictors from 2014.
+set.seed(100)
+data2014r <- cbind(data2014, pr_var2015)
+MLR2014_fullmodel <- lm(formula = pr_var2015 ~ ., data = data2014r)
+summary(MLR2014_fullmodel)
+
+# calculate the test set error rate
+MLR2014_preds <- predict(MLR2014_fullmodel, data = data2014r)
+head(round(MLR2014_preds, 1))
+
+# collect the observed and predicted values into a data frame
+TestSet1 <- sample(data2015matrix, 3808)
+MLR2014_Values <- data.frame(obs = TestSet1, pred = MLR2014_preds)
+defaultSummary(MLR2014_Values)
+
+
+# try using a robust linear regression fitting 
+# procedure instead
+library(MASS)
+RLRM2014_fullmodel <- rlm(formula = pr_var2015 ~ ., data = data2014)
+
+
+ctrl <- trainControl(method = "cv", number = 10)
+
+# try using a nonlinear regression fitting 
+# procedure instead
+NLRM2014 <- nls(formula = pr_var2015 ~ ., data = data2014)

@@ -188,6 +188,7 @@ ctrl_C <- trainControl(method = "LGOCV", summaryFunction = twoClassSummary,
 ###           predicted would go down in 2015 actually did go down.
 
 
+
 ### Classification Forecasting Model #1: Logit
 # set a random seed to ensure the replicability of our predictions
 set.seed(100)          # use the same seed for every model
@@ -198,10 +199,13 @@ ftLogitC1
 class(ftLogitC1)
 summary(ftLogitC1)
 
-# compare the expected classifications in 2015 to the observed classifications in 2015
+
+# compare the expected classifications in 2015 as predicted by the Logit
+# model fit on the 2014 stock data to the observed classifications in 2015
 LogitC1_predictions_for_2015 <- predict(ftLogitC1, data2015c)
-LogitC1_predictions_for_2016 <- predict(ftLogitC1, data2016c)   # same same for 2016
-LogitC1_predictions_for_2016 <- predict(ftLogitC1, data2017c)   # same same for 2017
+# same same for 2016
+LogitC1_predictions_for_2016 <- predict(ftLogitC1, data2016c)   
+
 
 # create a confusion matrix to show how well our Logit model's predictions fared
 # by inspecting all of its classification model performance metrics
@@ -211,15 +215,18 @@ LogitC1_CFM
 
 LogitC1_prob2015 <- predict(ftLogitC1, data2015c, type = "prob")
 LogitC1_prob2016 <- predict(ftLogitC1, data2016c, type = "prob")
-LogitC1_prob2017 <- predict(ftLogitC1, data2018c, type = "prob")
+
 
 
 # create an ROC curve for our Logit model and store it in an object
 ROC_LogitC1 <- roc(response = class2015c, predictor = LogitC1_prob2015$Increase,
                    levels = rev(levels(class2015c)))
+ROC_LogitC1
 # plot that ROC curve
 plot(ROC_LogitC1, col = "red", lwd = 3, 
-     main = "ROC curve for our Logit fit on the 2014 stock data")
+     main = "ROC Curve for the Logit fit on the 2014 Data 
+     and Tested on the 2015 Data")
+
 
 # calculate the area under the ROC curve
 auc_C1 <- auc(ROC_LogitC1)
@@ -232,19 +239,6 @@ VarImp_LogitC1
 # create a variable importance plot (for only the top 10 most important regressors)
 plot(VarImp_LogitC1, top = 10, 
      main = 'Variable Importance Plot for my Logit Model fit on the 2014 stock data')
-
-
-
-
-### Classification Forecasting Model #1.5: Logit after PCA
-set.seed(100)   # use the same seed for every model
-data2014c_OV <- cbind(data2014c, class2014c)   # OV stands for original version
-PCA_C1.fit = pcr(class2014c ~ ., data = data2014c_OV, 
-                 scale = TRUE, validation = "CV")
-PCA_C1.fit = pcr(formula = class2014c ~ ., data = data2014c_OV, 
-                 scale = TRUE, validation = "CV")
-PCA_C1.fit = prcomp(data2014c, center = TRUE, scale = TRUE)
-head(PCA_C1.fit$x[, 1:10])
 
 
 
@@ -271,8 +265,8 @@ PLSDA_C1fits2
 PLSDA_C1predictions <- predict(ftPLSDA_C1, data2015c)
 head(PLSDA_C1predictions)
 
-PLSDA_C1probs <- predict(ftPLSDA_C1, newdata = data2015c, type = "prob")
-head(PLSDA_C1probs)
+PLSDA_C1probs2015 <- predict(ftPLSDA_C1, newdata = data2015c, type = "prob")
+head(PLSDA_C1probs2015)
 
 # create a confusion matrix to show how well our PLS-DA model's predictions fared
 # by inspecting all of its classification model performance metrics
@@ -280,16 +274,21 @@ PLSDA_C1_CFM <- confusionMatrix(data = PLSDA_C1predictions,
                                 reference = class2015c, positive = "Increase")
 PLSDA_C1_CFM
 
-PLSDA_C1prob2016 <- predict(ftPLSDA_C1, data2016c, type = "prob")
-PLSDA_C1prob2017 <- predict(ftPLSDA_C1, data2017c, type = "prob")
+PLSDA_C1probs2016 <- predict(ftPLSDA_C1, data2016c, type = "prob")
+PLSDA_C1prob2s017 <- predict(ftPLSDA_C1, data2017c, type = "prob")
 
 # create an ROC curve for our PLS-DA model and store it in an object
-rocPLSDA_C1 <- roc(response = class2015c, predictor = PLSDA_C1probs$Increase,
+rocPLSDA_C1 <- roc(response = class2015c, 
+                   predictor = PLSDA_C1probs2015$Increase,
                    levels = rev(levels(class2015c)))
-
-# show the plot of that ROC curve for our PLS regression
+rocPLSDA_C1
+# show the plot of that ROC curve for the PLS-DA model
 plot(rocPLSDA_C1, col = "red", lwd = 3, 
-     main = "ROC curve for our PLS-DA model for the 2014 stock data")
+     main = "ROC curve for the PLS-DA model fit the 2014 stock data & tested on the 2015 data")
+
+plot(rocPLSDA_C1, col = "red", lwd = 3, 
+     main = "ROC Curve for the PLS-DA Model Trained on the 
+2014 Stock Data and Tested on the 2015 Data")
 
 auc_C2 <- auc(rocPLSDA_C1)
 cat('Area under the ROC curve for our PLS-DA model: ', round(auc_C2, 4))
@@ -320,9 +319,7 @@ glmnC1_Tuned <- train(x = data2014c, y = class2014c, method = "glmnet",
 glmnC1_Tuned
 
 glmnC1_Predict2015 <- predict(glmnC1_Tuned, data2015c)
-glmnC1_Predict2016 <- predict(glmnC1_Tuned, data2016c)
-glmnC1_Predict2017 <- predict(glmnC1_Tuned, data2017c)
-glmnC1_Predict2018 <- predict(glmnC1_Tuned, data2018c)
+
 
 
 # method 2 of fitting the elastic net via the cv.glmnet() function 
@@ -339,23 +336,20 @@ PRMC1_CFM1
 PRMC1_CFM2 <- confusionMatrix(data = glmnPredictC1_2016, 
                               reference = class2016c, positive = "Increase")
 PRMC1_CFM2
-# do the same for our model trained on the 2014 data's
-# predictions for 2017
-PRMC1_CFM3 <- confusionMatrix(data = glmnPredictC1_2017, 
-                              reference = class2017c, positive = "Increase")
-PRMC1_CFM3
 
 glmnC1_Prob <- predict(glmnC1_Tuned, data2015c, type = "prob")
 
 # create an ROC curve for our penalized classification model
 glmnC1_ROC <- roc(response = class2015c, predictor = glmnC1_Prob$Increase,
                   levels = rev(levels(class2015c)))
+glmnC1_ROC
 
 # plot the ROC curve
-plot(glmnC1_ROC, col = "red", lwd = 3, main = "ROC curve for our penalized model")
+plot(glmnC1_ROC, col = "red", lwd = 3, 
+                    main = "ROC curve for the Penalized Classification model")
 
 auc_C3 <- auc(glmnC1_ROC)
-cat('Area under the ROC curve for our penalized model: ', 
+cat('Area under the ROC curve for the penalized model: ', 
     round(auc_C3, 4))
 
 # assess the importance of the included regressors  
@@ -489,14 +483,15 @@ svmC1Prob <- predict(svmC1Fit, data2015c, type = "prob")
 
 svmC1_ROC <- roc(response = class2015c, predictor = svmC1Prob$Increase,
                  levels = rev(levels(class2015c)))
+svmC1_ROC
 
-plot(svmC1_ROC, col = "red", lwd = 3, main = "ROC curve for our SVM model")
+plot(svmC1_ROC, col = "red", lwd = 3, main = "ROC curve for the SVM")
+
 
 # calculate the area under the above ROC curve
 auc_C7 <- auc(svmC1_ROC)
 cat('Area under the ROC curve for our Support Vector Machine model: ', 
     round(auc_C7, 4))
-
 
 
 
@@ -523,13 +518,17 @@ knnC1_Prob <- predict(knnC1_Model, data2015c, type = "prob")
 
 knnC1_ROC <- roc(response = class2015c, predictor = knnC1_Prob$Increase,
                  levels = rev(levels(class2015c)))
-
-plot(knnROC, col = "red", lwd = 3, main = "ROC curve for our KNN Model")
+plot(knnC1_ROC, col = "red", lwd = 3, main = "ROC curve for the KNN Model")
 
 # calculate the area under the above ROC curve
 auc_C8 <- auc(knnC1_ROC)
 cat('Area under the ROC curve for our KNN model fit on the 2014 data: ', 
     round(auc_C8, 4))
+
+
+
+
+
 
 
 
@@ -541,16 +540,57 @@ cat('Area under the ROC curve for our KNN model fit on the 2014 data: ',
 ####         out right on top of each other, one after the other in
 ####         order to facilitate easy visual comparisons of each of their
 ####         classification performance metrics with all the other 7.
-LogitC1_CFM         # the confusion matrix for our logistic regression model
+results <- resamples(list(Logit = ftLogitC1, PLSDA = ftPLSDA_C1, 
+                          PRM = glmnC1_Tuned, avNN = avNNetModelC1, 
+                          NNet = nnetModelC1, SVM = svmC1Fit, 
+                          KNN = knnC1_Model))
+# the confusion matrix for our logistic regression model
+LogitC1_CFM    # it has a negative Kappa which is GARBAGE, accuracy = 40%
+ROC_LogitC1
+plot(ROC_LogitC1, col = "red", lwd = 3, 
+     main = "ROC Curve for the Logit fit on the 2014 Data 
+     and Tested on the 2015 Data")
+auc_C1         # only 0.6 which is also trash
 
-PLSDA_C1_CFM        # the confusion matrix for our PLS-DA model
 
-PRMC1_CFM1          # the confusion matrix for our penalized regression model
+# the confusion matrix for our PLS-DA model
+PLSDA_C1_CFM   # another negative kappa value, accuracy = 37% 
+rocPLSDA_C1
+plot(rocPLSDA_C1, col = "red", lwd = 3, 
+main = "ROC Curve for the PLS-DA Model Trained on the 
+2014 Stock Data and Tested on the 2015 Data")
+auc_C2         # only about 0.6 again somehow
 
-nnet_CFM_C1         # the confusion matrix for our Neural Network model
 
-avgNNc1_CFM         # the confusion matrix for our average neural net
+# the confusion matrix for our penalized regression model
+PRMC1_CFM1     # another negative kappa value, accuracy = 27%  
+plot(glmnC1_ROC, col = "red", lwd = 3, 
+     main = "ROC curve for the Penalized Classification model")
+auc_C3         # once again, roughly 0.6
 
-svmC1_CFM           # the confusion matrix for our Support Vector Machine model
 
-knnC1_CFM           # the confusion matrix for our K-Nearest Neighbors model
+# the confusion matrix for our Neural Network model
+nnet_CFM_C1    # Kappa = -0.04, accuracy = 47%      
+plot(nnetC1_ROC, col = "red", lwd = 3, 
+     main = "ROC curve for the single Artificial Neural Network")
+auc_C4         # 0.55
+
+
+# the confusion matrix for our average neural net
+avgNNc1_CFM    # Kappa = -0.05, accuracy = 0.45   
+plot(avNNetModelC1_ROC, col = "red", lwd = 3, 
+     main = "ROC curve for the Average Neural Net Model")
+auc_C5         # auc = 0.58
+
+
+# the confusion matrix for our Support Vector Machine model
+svmC1_CFM      # Kappa = -0.08, accuracy = 0.33
+plot(svmC1_ROC, col = "red", lwd = 3, main = "ROC curve for the SVM")
+auc_C7         # auc = 0.61
+
+
+# the confusion matrix for our K-Nearest Neighbors model
+knnC1_CFM       # Kappa = -0.014, accuracy = 0.32
+knnC1_ROC
+plot(knnC1_ROC, col = "red", lwd = 3, main = "ROC curve for the KNN Model")
+auc_C8          # auc = 0.53
