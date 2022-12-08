@@ -167,7 +167,7 @@ data2018c <- subset(data2018c, select = -c(X, Class, Sector))
 
 
 
-### interpolate the missing values in data2014
+### interpolate the missing values in data2014 using their means
 # find and count the position of all NAs (column-wise)
 which(is.na(data2014))
 # find all rows with at least 1 NA
@@ -297,7 +297,7 @@ ctrl_c <- trainControl(method = "LGOCV", summaryFunction = twoClassSummary,
 set.seed(100)          # use the same seed for every model
 ftLogitC1 <- train(x = data2014c, y = class2014c, method = "glm",
                  metric = "ROC", preProcess = c("center", "scale"),
-                 trControl = ctrl)
+                 trControl = ctrl_c)
 ftLogitC1
 
 # compare the expected classifications in 2015 to the observed classifications in 2015
@@ -321,11 +321,12 @@ ROC_LogitC1 <- roc(response = class2015c, predictor = LogitC1_prob2015$Increase,
                  levels = rev(levels(class2015c)))
 # plot that ROC curve
 plot(ROC_LogitC1, col = "red", lwd = 3, 
-     main = "ROC curve for our Logit fit on the 2014 stock data")
+     main = "ROC curve for the Logit fit on the reduced 2014 stock data,
+     the version with all missing valued rows omitted")
 
 # calculate the area under the ROC curve
 auc_C1 <- auc(ROC_LogitC1)
-cat('Area under the ROC curve for our Logistic Regression: ', round(auc_C1, 4))
+cat('Area under the ROC curve for Logistic Regression: ', round(auc_C1, 3))
 
 # assess the importance of the included regressors  
 VarImp_LogitC1 <- varImp(ftLogitC1)
@@ -343,7 +344,7 @@ set.seed(100)   # use the same seed for every model
 ftPLS_C1 <- train(x = data2014c, y = class2014c, method = "pls",
                tuneGrid = expand.grid(.ncomp = 1:4),
                preProc = c("center", "scale"), metric = "ROC",
-               trControl = ctrl)
+               trControl = ctrl_c)
 ftPLS_C1
 
 # compare the expected classifications in 2015 to the observed classifications in 2015
@@ -364,10 +365,12 @@ rocPLSDA_C1 <- roc(response = class2015c, predictor = PLSDA_C1prob2015$Increase,
 
 # show the plot of that ROC curve for our PLS regression
 plot(rocPLSDA_C1, col = "red", lwd = 3, 
-     main = "ROC curve for our PLS-DA model for the 2014 stock data")
+     main = "ROC curve for the PLS-DA fit on the reduced 2014 stock data, 
+     the version of it with all rows with NAs omitted")
 
 auc_C2 <- auc(rocPLSDA_C1)
-cat('Area under the ROC curve for our PLS-DA model: ', round(auc_C2, 4))
+cat('Area under the ROC curve for the PLS-DA model fit on the redueced: ', 
+    round(auc_C2, 3))
 
 # assess the importance of the included regressors  
 VarImp_PLSDA_C1 <- varImp(ftPLS_C1)
@@ -380,6 +383,7 @@ plot(VarImp_PLSDA_C1, top = 10,
 
 
 
+
 ### Classification Forecasting Model #3: penalized regression models
 glmnGrid <- expand.grid(.alpha = c(0, .1, .2, .4, .6, .8, 1), 
                         .lambda = seq(.01, .2, length = 40))
@@ -387,13 +391,12 @@ glmnGrid <- expand.grid(.alpha = c(0, .1, .2, .4, .6, .8, 1),
 set.seed(100)        # use the same seed for every predictive model
 glmnTunedC1 <- train(x = data2014c, y = class2014c, method = "glmnet",
                    tuneGrid = glmnGrid, preProc = c ("center", "scale"),
-                   metric = "ROC", trControl = ctrl)
+                   metric = "ROC", trControl = ctrl_c)
 glmnTunedC1
 
 glmnPredictC1 <- predict(glmnTunedC1, data2015c)
 #glmnPredictC1_2016 <- predict(glmnTunedC1, data2016c)
 #glmnPredictC1_2017 <- predict(glmnTunedC1, data2017c)
-
 
 # assess the performance of our penalized classification model's 
 # predictions via confusion matrix
@@ -409,7 +412,8 @@ glmnROC_C1 <- roc(response = class2015c, predictor = glmnProb$Increase,
                levels = rev(levels(class2015c)))
 
 # plot the ROC curve
-plot(glmnROC_C1, col = "red", lwd = 3, main = "ROC curve for our penalized model")
+plot(glmnROC_C1, col = "red", lwd = 3, 
+     main = "ROC curve for elastic net fit on the reduced 2014 stock data")
 
 auc_C3 <- auc(glmnROC_C1)
 cat('Area under the ROC curve for our penalized model: ', 
@@ -436,7 +440,8 @@ nnetModelC1 = train(x = data2014c, y = class2014c, method = "nnet",
                   maxit = 500, tuneGrid = nnGrid)
 nnetModelC1
 
-# compare the expected classifications in 2015 to the observed classifications in 2015
+# compare the expected classifications in 2015 to the 
+# observed classifications in 2015
 nnetPredC1 = predict(nnetModelC1, newdata = data2015c)
 
 nnetPRc1 = postResample(pred = nnetPredC1, obs = class2015c)
@@ -453,7 +458,8 @@ nnetC1_Prob <- predict(nnetModelC1, data2015c, type = "prob")
 nnetC1_ROC <- roc(response = class2015c, predictor = nnetC1_Prob$Increase,
                levels = rev(levels(class2015c)))
 
-plot(nnetC1_ROC, col = "red", lwd = 3, main = "ROC curve for our Neural Network")
+plot(nnetC1_ROC, col = "red", lwd = 3, 
+     main = "ROC curve for the Neural Network fit on the reduced 2014 data")
 
 # calculate the area under the above ROC curve
 auc_C4 <- auc(nnetC1_ROC)
@@ -521,16 +527,16 @@ library(kernlab)
 set.seed(100)
 svmGrid = expand.grid(.sigma = c(0, 0.01, 0.1), .C = 1:10)
 
-svmC1Fit <- train(x = data2014c, y = class2014c,  method = "svmRadial",
+svmC1.fit <- train(x = data2014c, y = class2014c,  method = "svmRadial",
                 preProc = c("center", "scale"), tuneGrid = svmGrid,
-                trControl = trainControl(method = "repeatedcv", repeats = 5,
-                                         classProbs =  TRUE))
-svmC1Fit
+                trControl = trainControl(method = "repeatedcv", 
+                                         repeats = 5, classProbs =  TRUE))
+svmC1.fit
 
 # compare the expected classifications in 2015 to the observed classifications in 2015
-svmC1_Pred = predict(svmC1Fit, newdata = data2015c)
+svmC1_Preds = predict(svmC1.fit, newdata = data2015c)
 
-svmC1_PR = postResample(pred = svmC1_Pred, obs = class2015c)
+svmC1_PR = postResample(pred = svmC1_Preds, obs = class2015c)
 svmC1_PR
 
 # assess the performance of our penalized classification model's predictions 
@@ -548,7 +554,7 @@ plot(svmC1_ROC, col = "red", lwd = 3, main = "ROC curve for our SVM model")
 
 # calculate the area under the above ROC curve
 auc_C7 <- auc(svmC1_ROC)
-cat('Area under the ROC curve for our Support Vector Machine model: ', 
+cat('Area under the ROC curve for the Support Vector Machine model: ', 
     round(auc_C7, 4))
 
 
@@ -558,9 +564,9 @@ cat('Area under the ROC curve for our Support Vector Machine model: ',
 
 ### Classification Forecasting Model #6: K-Nearest Neighbors 
 set.seed(100)
-knnC1_Model = train(x = data2014c, y = class2014c, method = "knn",
+knnC1 = train(x = data2014c, y = class2014c, method = "knn",
                  preProc = c("center","scale"), tuneLength = 20)
-knnC1_Model
+knnC1
 
 # compare the expected classifications in 2015 to the observed classifications in 2015
 knnC1_Pred = predict(knnC1_Model, newdata = data2015c)
@@ -577,11 +583,11 @@ knnC1_Prob <- predict(knnC1_Model, data2015c, type = "prob")
 knnC1_ROC <- roc(response = class2015c, predictor = knnC1_Prob$Increase,
               levels = rev(levels(class2015c)))
 
-plot(knnROC, col = "red", lwd = 3, main = "ROC curve for our KNN Model")
+plot(knnROC, col = "red", lwd = 3, main = "ROC curve the our KNN Model")
 
 # calculate the area under the above ROC curve
 auc_C8 <- auc(knnC1_ROC)
-cat('Area under the ROC curve for our KNN model fit on the 2014 data: ', 
+cat('Area under the ROC curve for the KNN model fit on the 2014 data: ', 
     round(auc_C8, 4))
 
 
