@@ -69,11 +69,11 @@ rm(mean_data2018)
 
 
 
-
-
 # define model controls
 ctrl_c <- trainControl(method = "LGOCV", summaryFunction = twoClassSummary,
                        classProbs = TRUE)
+ctrl_c2 <- trainControl(method = "LGOCV", summaryFunction = prSummary,
+                        classProbs = TRUE)
 
 
 
@@ -87,22 +87,75 @@ ctrl_c <- trainControl(method = "LGOCV", summaryFunction = twoClassSummary,
 # set a random seed to ensure the replicability of our predictions
 set.seed(100)          # use the same seed for every model
 ft.LogitC1_V2 <- train(x = data2014, y = class2014, method = "glm",
-                   metric = "ROC", preProcess = c("center", "scale"),
-                   trControl = ctrl_c)
+                       metric = "ROC", preProcess = c("center", "scale"),
+                       trControl = ctrl_c)
 ft.LogitC1_V2
+ft.LogitC1_V3 <- train(x = data2014, y = class2014, method = "glm",
+                       metric = "ROC", preProcess = c("center", "scale"),
+                       trControl = ctrl_c2)
+ft.LogitC1_V3
 
 # compare the expected classifications in 2015 to the observed classifications in 2015
 LogitC1_V2preds_for_2015 <- predict(ft.LogitC1_V2, data2015)
-LogitC1_predictions_for_2016 <- predict(ftLogitC1, data2016)   # same same for 2016
-LogitC1_predictions_for_2016 <- predict(ftLogitC1, data2017)   # same same for 2017
+LogitC1_V2preds_for_2016 <- predict(ft.LogitC1_V2, data2016)  #same same for 2016
+LogitC1_V2preds_for_2017 <- predict(ft.LogitC1_V2, data2017)  #same for 2017
+LogitC1_V2preds_for_2018 <- predict(ft.LogitC1_V2, data2018)
+
+LogitC1_V3preds_for_2015 <- predict(ft.LogitC1_V3, data2015)
+LogitC1_V3preds_for_2016 <- predict(ft.LogitC1_V3, data2016)  #same same for 2016
+LogitC1_V3preds_for_2017 <- predict(ft.LogitC1_V3, data2017)  #same for 2017
+LogitC1_V3preds_for_2018 <- predict(ft.LogitC1_V3, data2018)
+
 
 # create a confusion matrix to show how well our Logit model's predictions fared
 # by inspecting all of its classification model performance metrics
 LogitC1_v2CFM <- confusionMatrix(data = LogitC1_V2preds_for_2015, 
-                               reference = class2015, positive = "Increase")
+                                 reference = class2015, positive = "Increase")
 LogitC1_v2CFM
 
+LogitC1_v2CFM_2016 <- confusionMatrix(data = LogitC1_V2preds_for_2016, 
+                                      reference = class2016, 
+                                      positive = "Increase")
+LogitC1_v2CFM_2016
+LogitC1_v2CFM_2017 <- confusionMatrix(data = LogitC1_V2preds_for_2017, 
+                                      reference = class2017, 
+                                      positive = "Increase")
+LogitC1_v2CFM_2017
+LogitC1_v2CFM_2018 <- confusionMatrix(data = LogitC1_V2preds_for_2018, 
+                                      reference = class2018, 
+                                      positive = "Increase")
+LogitC1_v2CFM_2018
+
+
+LogitC1_v3CFM <- confusionMatrix(data = LogitC1_V3preds_for_2015, 
+                                 reference = class2015, positive = "Increase")
+LogitC1_v3CFM
+
+LogitC1_v3CFM_2016 <- confusionMatrix(data = LogitC1_V3preds_for_2016, 
+                                      reference = class2016, 
+                                      positive = "Increase")
+LogitC1_v3CFM_2016
+LogitC1_v3CFM_2017 <- confusionMatrix(data = LogitC1_V3preds_for_2017, 
+                                     reference = class2017, 
+                                     positive = "Increase")
+LogitC1_v3CFM_2017
+LogitC1_v3CFM_2018 <- confusionMatrix(data = LogitC1_V3preds_for_2018, 
+                                      reference = class2018, 
+                                      positive = "Increase")
+LogitC1_v3CFM_2018
+
+
+
 LogitC1_V2prob2015 <- predict(ft.LogitC1_V2, data2015, type = "prob")
+LogitC1_V2prob2016 <- predict(ft.LogitC1_V2, data2016, type = "prob")
+LogitC1_V2prob2017 <- predict(ft.LogitC1_V2, data2017, type = "prob")
+LogitC1_V2prob2018 <- predict(ft.LogitC1_V2, data2018, type = "prob")
+
+LogitC1_V3prob2015 <- predict(ft.LogitC1_V3, data2015, type = "prob")
+LogitC1_V3prob2016 <- predict(ft.LogitC1_V3, data2016, type = "prob")
+LogitC1_V3prob2017 <- predict(ft.LogitC1_V3, data2017, type = "prob")
+LogitC1_V3prob2018 <- predict(ft.LogitC1_V3, data2018, type = "prob")
+
 
 # create an ROC curve for our Logit model and store it in an object
 ROC_LogitC1_V2 <- roc(response = class2015, 
@@ -118,12 +171,13 @@ cat('Area under the ROC curve for Logistic Regression: ',
     round(auc_LogitV2, 3))
 
 # assess the importance of the included regressors  
-VarImp_LogitC1 <- varImp(ftLogitC1)
-VarImp_LogitC1
+VarImp_LogitC1_V2 <- varImp(ft.LogitC1_V2)
+VarImp_LogitC1_V2
 
 # create a variable importance plot (for only the top 10 most important regressors)
-plot(VarImp_LogitC1, top = 10, 
+plot(VarImp_LogitC1_V2, top = 10, 
      main = 'Variable Importance Plot for my Logit Model fit on the 2014 stock data')
+
 
 
 
@@ -183,6 +237,7 @@ LogitC1_prob2018 <- predict(ftLogitC1, data2018c, type = "prob")
 
 
 
+
 ### Classification Forecasting Model #2: PLA-DA
 set.seed(100)   # use the same seed for every model
 fit.PLS_C1V2 <- train(x = data2014, y = class2014, method = "pls",
@@ -191,19 +246,43 @@ fit.PLS_C1V2 <- train(x = data2014, y = class2014, method = "pls",
                   trControl = ctrl_c)
 fit.PLS_C1V2
 
+set.seed(100)   # use the same seed for every model
+fit.PLS_C1V3 <- train(x = data2014, y = class2014, method = "pls",
+                      tuneGrid = expand.grid(.ncomp = 1:4),
+                      preProc = c("center", "scale"), metric = "ROC",
+                      trControl = ctrl_c2)
+fit.PLS_C1V3
+
+
 # compare the expected classifications in 2015 to the observed classifications in 2015
 PLS_C1V2_preds <- predict(fit.PLS_C1V2, data2015)
+
+PLS_C1V3_preds <- predict(fit.PLS_C1V3, data2015)
+
 
 # create a confusion matrix to show how well our PLS-DA model's predictions fared
 # by inspecting all of its classification model performance metrics
 PLSDA_C1V2_CFM <- confusionMatrix(data = PLS_C1V2_preds, reference = class2015,
                                   positive = "Increase")
 PLSDA_C1V2_CFM
+
+PLSDA_C1V3_CFM <- confusionMatrix(data = PLS_C1V3_preds, reference = class2015,
+                                  positive = "Increase")
+PLSDA_C1V3_CFM
+
 PLSDA_C1V2prob2015 <- predict(fit.PLS_C1V2, data2015, type = "prob")
 
+PLSDA_C1V3prob2015 <- predict(fit.PLS_C1V3, data2015, type = "prob")
+
+
 # create an ROC curve for our PLS-DA model and store it in an object
-rocPLSDA_C1V2 <- roc(response = class2015, predictor = PLSDA_C1V2prob2015$Increase,
-                   levels = rev(levels(class2015)))
+rocPLSDA_C1V2 <- roc(response = class2015, 
+                     predictor = PLSDA_C1V2prob2015$Increase,
+                     levels = rev(levels(class2015)))
+rocPLSDA_C1V3 <- roc(response = class2015, 
+                     predictor = PLSDA_C1V3prob2015$Increase,
+                     levels = rev(levels(class2015)))
+
 # show the plot of that ROC curve for our PLS regression
 plot(rocPLSDA_C1V2, col = "red", lwd = 3, 
      main = "ROC curve for PLS-DA fit on all of the 2014 stock data")
@@ -212,12 +291,26 @@ auc_PLSDA_C1V2 <- auc(rocPLSDA_C1V2)
 cat('Area under the ROC curve for our PLS-DA model: ', 
     round(auc_PLSDA_C1V2, 3))
 
+# show the plot of that ROC curve for our PLS regression
+plot(rocPLSDA_C1V3, col = "red", lwd = 3, 
+     main = "ROC curve for PLS-DA fit on all of the 2014 stock data")
+# calculate its AUC
+auc_PLSDA_C1V3 <- auc(rocPLSDA_C1V3)
+cat('Area under the ROC curve for our PLS-DA model: ', 
+    round(auc_PLSDA_C1V3, 3))
+
+
 # assess the importance of the included regressors  
-VarImp_PLSDA_C1V2 <- varImp(ftPLS_C1)
+VarImp_PLSDA_C1V2 <- varImp(fit.PLS_C1V2)
 VarImp_PLSDA_C1V2
+
+VarImp_PLSDA_C1V3 <- varImp(fit.PLS_C1V3)
+VarImp_PLSDA_C1V3
 
 # create a variable importance plot (for only the top 20 IVs)
 plot(VarImp_PLSDA_C1V2, top = 10, 
+     main = 'Variable Importance Plot for our PLS-DA model fit on the 2014 data')
+plot(VarImp_PLSDA_C1V3, top = 10, 
      main = 'Variable Importance Plot for our PLS-DA model fit on the 2014 data')
 
 
