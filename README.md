@@ -8,4 +8,5 @@ models I have learned in this program (as this is my final course) by comparing 
 in how well they are able to forecast the performance of US Stocks.
 
 I used a high usability rated Kaggle dataset with annual data on US stocks with over 200 candidate
-predictors for each of an average of 4k stocks for 5 separate years from 2014 to 2018.
+predictors for each of an average of 4k stocks for 5 separate years from 2014 to 2018. 
+Here is the link to that Kaggle dataset: https://www.kaggle.com/datasets/cnic92/200-financial-indicators-of-us-stocks-20142018
