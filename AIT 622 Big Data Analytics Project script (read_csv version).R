@@ -44,9 +44,9 @@ getwd()
 # use Ctrl+Shift+H to select the proper WD if necessary, for this script,
 # the proper working directory will be the unzipped version of the zip folder
 # we turned everything required of our final deliverable for this project in with
-setwd("~/George Mason University folders (local)/AIT 622 - Determining Needs for Complex Big Data Systems/AIT 622 Individual Project")
-setwd("C:/Users/Spencer/OneDrive/Documents/Analytics Projects/AIT 622 Individual Project")
-getwd()
+#setwd("~/George Mason University folders (local)/AIT 622 - Determining Needs for Complex Big Data Systems/AIT 622 Individual Project")
+#setwd("C:/Users/Spencer/OneDrive/Documents/Analytics Projects/AIT 622 Individual Project")
+#getwd()
 
 
 
@@ -61,7 +61,8 @@ data_2018 <- read_csv("2018_Financial_Data.csv", col_names = TRUE)
 
 
 ##### Part 2: data cleaning, wrangling, and pre-processing
-# remove all predictors with either zero or near zero variance
+# remove all predictors with either zero or near zero variance 
+# in the data_2014 dataset
 ZeroVar2014 <- nearZeroVar(data_2014)
 
 data_2014 <- data_2014[ , -ZeroVar2014]
@@ -318,10 +319,10 @@ data_2018c <- data_2018c[, -highCorr_2018C]
 
 
 
-
 # define model controls
 ctrl_c <- trainControl(method = "LGOCV", summaryFunction = twoClassSummary,
                      classProbs = TRUE)
+
 
 
 
