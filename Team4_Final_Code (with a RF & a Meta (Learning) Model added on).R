@@ -592,11 +592,12 @@ plot(imp_ensemble, top = 10,
 
 ### Part 4: model comparison and assessment
 
-# print out the Confusion Matrices and AUCs for all 7 of the individual classification 
-# algorithms again, then do the same for the 3 ensemble learning models.
-# But this time, print them out right on top of each other, one after the other
-# in order to facilitate easy visual comparison of each of their 
-# classification performance metrics with each other. 
+## print out the Confusion Matrices and AUCs for all 7 of the individual 
+## classification algorithms again, then do the same for the 3 ensemble 
+## learning models.But this time, print them out right on top of each other, 
+## one after the other in order to facilitate easy visual comparison of each 
+## of their classification performance metrics with each other.
+# Performance Metrics for the 7 individual classification models
 Logit_CFM          # the confusion matrix for our logistic regression model
 cat('Area under the ROC curve for our Logistic Regression: ', round(auc1, 4))
 
@@ -620,7 +621,7 @@ cat('Area under the ROC curve for our KNN model: ', round(auc7, 4))
 
 
 
-
+# Performance Metrics for the 3 ensemble learning models
 avgNN_CFM          # the confusion matrix for our average neural net
 cat('Area under the ROC curve for our Average Neural Net:', 
     round(ensemble_auc1, 4))
