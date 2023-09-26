@@ -486,6 +486,35 @@ ftRF <- train(x = data2014,
 # model summary
 ftRF
 
+# Check the final model parameters
+ftRF$finalModel
+
+
+# You can also manually specify that you want it to run 1,000 trees,
+# not the 500 which it runs by default. That is done below.
+# Define the tuning grid to use 1000 trees
+tuneGridRF <- expand.grid(.mtry = seq(1, sqrt(ncol(data2014)), by = 2),
+                          .splitrule = "gini",
+                          .min.node.size = 1)
+
+# Train the Random Forest model with 1000 trees
+ftRF_1000 <- train(x = data2014,
+              y = class2014,
+              method = "ranger",
+              metric = "ROC",
+              tuneGrid = tuneGridRF,
+              num.trees = 1000,  # Set the number of trees to 1000
+              trControl = ctrl,
+              preProcess = c("center", "scale"))
+
+# Model summary
+ftRF_1000
+
+# Check the final model parameters
+ftRF_1000$finalModel
+
+
+
 # use the model fitted on the 2014 data to predict the 2015 data
 RFpredict <- predict(ftRF, newdata = data2015)
 
