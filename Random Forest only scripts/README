@@ -1,1 +1,3 @@
-This folder contains scripts that run many different versions of random forest classification models using the caret package in R.
+This folder contains scripts that run many different versions of random forest classification models using the caret package in R. 
+It also includes slightly different versions of two of the base datasets.
+Furthermore, this part of the project has blown up so much in scope that I now consider it a spinoff project of its own.
