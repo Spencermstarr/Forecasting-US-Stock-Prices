@@ -153,8 +153,7 @@ rfGrid1 <- expand.grid(.mtry = c(1:sqrt(ncol(data2014)), by = 2))  # sqrt of tot
 
 # Train the Random Forest Model using the caret package
 time_to_fit_RF1 <- system.time( ftRF1 <- train(x = data2014, y = class2014, method = "rf", 
-                            tuneGrid = rfGrid1, metric = "ROC", 
-                            trControl = ctrl) )
+                                               tuneGrid = rfGrid1, metric = "ROC", trControl = ctrl) )
 # model summary
 ftRF1
 # Check the final model parameters
@@ -218,7 +217,8 @@ tuneGridRF2 <- expand.grid(.mtry = seq(1, sqrt(ncol(data2014)), by = 2),
 time_to_fit_RF2 <- system.time( ftRF2 <- train(x = data2014, y = class2014, method = "ranger",
                                                metric = "ROC", tuneGrid = tuneGridRF2,
                                                num.trees = 1000,  # Set the number of trees to 1000
-                                               trControl = ctrl, preProcess = c("center", "scale")) 
+                                               trControl = ctrl, preProcess = c("center", "scale"),
+                                               importance = "impurity") 
                                 )
 # Model summary
 ftRF2
@@ -232,7 +232,6 @@ RF2_predict <- predict(ftRF2, newdata = data2015)
 RF2_CFM <- confusionMatrix(data = RF2_predict, 
                                reference = class2015, 
                                positive = "Increase")
-RF2_CFM
 
 # Now construct the ROC Curve and calculate the AUC for the RF with 1,0000 trees
 RF2_prob <- predict(ftRF2, newdata = data2015, type = "prob")
@@ -247,6 +246,8 @@ plot(ROC_RF2, col = "red", lwd = 3,
 RF2_auc <- auc(ROC_RF2)
 cat('Area under the ROC curve for our Random Forest with 1,000:', 
     round(RF2_auc, 4), '\n')
+
+RF2_CFM
 
 # variable importance evaluation for the RF with 1000 trees
 impRF2 <- varImp(ftRF2)
@@ -279,42 +280,116 @@ tuneGridRF3 <- expand.grid(.mtry = c(1, 5, 10, 15, 20),
                            .min.node.size = c(1, 5, 10))
 
 # Train the Random Forest model
-time_to_fit_RF3 <- system.time( ftRF_tuned3 <- train(x = data2014, y = class2014, method = "ranger",
-                                metric = "ROC", tuneGrid = tuneGridRF3,
-                                num.trees = 500,  # You can adjust this based on your findings
-                                trControl = ctrl, preProcess = c("center", "scale")) 
+time_to_fit_RF3 <- system.time( ftRF3_tuned <- train(x = data2014, y = class2014, 
+                                                     method = "ranger", metric = "ROC", 
+                                                     tuneGrid = tuneGridRF3,
+                                                     num.trees = 500,  # You can adjust this based on your findings
+                                                     trControl = ctrl, 
+                                                     preProcess = c("center", "scale"),
+                                                     importance = "impurity") 
                                 )
+time_to_fit_RF3
+
 # Model summary
-ftRF_tuned3
+ftRF3_tuned
 # Check the final model parameters
-ftRF_tuned3$finalModel
+ftRF3_tuned$finalModel
 
 # use the model fitted on the 2014 data to predict the 2015 data
-RF_tuned3_predict <- predict(ftRF_tuned3, newdata = data2015)
+RF3_tuned_predict <- predict(ftRF3_tuned, newdata = data2015)
 
-# performance assessment for the RF with the default of 500 trees
-RF_tuned3_CFM <- confusionMatrix(data = RF_tuned3_predict, reference = class2015, 
+# performance assessment for the RF with 500 trees
+RF3_tuned_CFM <- confusionMatrix(data = RF3_tuned_predict, 
+                                 reference = class2015, 
                                  positive = "Increase")
 
 # Construct the ROC Curve and then calculate the Area Under the Curve (AUC)
 # for the RF with 500 trees.
-RF_tuned3_prob <- predict(ftRF_tuned3, newdata = data2015, type = "prob")
-ROC_RF_tuned3 <- roc(response = class2015, predictor = RF_tuned3_prob$Increase,
+RF3_tuned_prob <- predict(ftRF3_tuned, newdata = data2015, type = "prob")
+ROC_RF3_tuned <- roc(response = class2015, predictor = RF3_tuned_prob$Increase,
                      levels = rev(levels(class2015)))
 
 # display the ROC curve just constructed
-plot(ROC_RF_tuned3, col = "red", lwd = 3, 
+plot(ROC_RF3_tuned, col = "red", lwd = 3, 
+     main = "ROC curve for 3rd RF")
+plot(ROC_RF3_tuned, col = "red", lwd = 3, 
      main = "ROC curve for RF with 500 trees, extratrees splitrule also 
-     available, and more .mtrys & .min.node.sizes available")
+available, and more .mtrys & .min.node.sizes available")
 
 # calculate the Area Under the ROC
-RF3_auc <- auc(ROC_RF_tuned3)
-cat('Area under the ROC curve for variation #3 on the Random Forest model:', 
+RF3_auc <- auc(ROC_RF3_tuned)
+cat('Area under the ROC curve for the 3rd Random Forest model:', 
     round(RF3_auc, 4), '\n')
 
-RF_tuned3_CFM
+RF3_tuned_CFM
+
+# variable importance evaluation for the 3rd RF
+impRF3 <- varImp(ftRF3_tuned)
+plot(impRF3, top = 10, 
+     main = 'Variable Importance Plot for the 3rd Random Forest Model')
 
 
+
+
+
+
+
+
+
+
+
+
+
+## Random Forest version #3.5, which is identical to the 3rd version,
+## except that the predictors are not centered or scaled.
+# Set the seed for reproducibility
+set.seed(100)
+# Train the Random Forest model
+time_to_fit_RF3.5 <- system.time( ftRF3.5_tuned <- train(x = data2014, y = class2014, 
+                                                         method = "ranger", metric = "ROC", 
+                                                         tuneGrid = tuneGridRF3,
+                                                         num.trees = 500, 
+                                                         trControl = ctrl,
+                                                         importance = "permutation") 
+)
+time_to_fit_RF3.5
+
+# Model summary
+ftRF3.5_tuned
+# Check the final model parameters
+ftRF3.5_tuned$finalModel
+
+# use the model fitted on the 2014 data to predict the 2015 data
+RF3.5_tuned_predict <- predict(ftRF3.5_tuned, newdata = data2015)
+
+# performance assessment for the RF with 500 trees
+RF3.5_tuned_CFM <- confusionMatrix(data = RF3.5_tuned_predict, 
+                                   reference = class2015, 
+                                   positive = "Increase")
+
+# Construct the ROC Curve and then calculate the Area Under the Curve (AUC)
+# for the RF with 500 trees.
+RF3.5_tuned_prob <- predict(ftRF3.5_tuned, newdata = data2015, type = "prob")
+ROC_RF3.5_tuned <- roc(response = class2015, predictor = RF3.5_tuned_prob$Increase,
+                       levels = rev(levels(class2015)))
+
+# display the ROC curve just constructed
+plot(ROC_RF3.5_tuned, col = "red", lwd = 3, 
+     main = "ROC curve for 3.5th RF")
+plot(ROC_RF3.5_tuned, col = "red", lwd = 3, 
+     main = "ROC curve for RF version 3.5")
+
+# calculate the Area Under the ROC
+RF3.5_auc <- auc(ROC_RF3.5_tuned)
+cat('Area under the ROC curve for the 3.5th Random Forest model:', 
+    round(RF3.5_auc, 4), '\n')
+
+RF3.5_tuned_CFM
+
+# variable importance evaluation for the 3rd RF
+impRF3.5 <- varImp(ftRF3.5_tuned)
+plot(impRF3.5, top = 10, 
+     main = 'Variable Importance Plot for the 3.5th Random Forest Model')
 
 
 
@@ -327,13 +402,16 @@ RF_tuned3_CFM
 
 
 ## Random Forest version #4
+# Set the seed for reproducibility
+set.seed(100)
 # Try again using the same tuning grid as RF version 3, but 
 # use 1,000 trees instead of 500 this time.
 # Train the Random Forest model
-time_to_fit_RF4 <- system.time( ftRF_tuned4 <- train(x = data2014, y = class2014, method = "ranger",
-                                metric = "ROC", tuneGrid = tuneGridRF3,
-                                num.trees = 1000,  # You can adjust this based on your findings
-                                trControl = ctrl, preProcess = c("center", "scale")) 
+time_to_fit_RF4 <- system.time( ftRF_tuned4 <- train(x = data2014, y = class2014, 
+                                                     method = "ranger", metric = "ROC", 
+                                                     tuneGrid = tuneGridRF3, num.trees = 1000,  # You can adjust this based on your findings
+                                                     trControl = ctrl, preProcess = c("center", "scale"),
+                                                     importance = "impurity") 
                                 )
 # Model summary
 ftRF_tuned4
@@ -346,7 +424,6 @@ RF_tuned4_predict <- predict(ftRF_tuned4, newdata = data2015)
 # performance assessment for the RF with the default of 500 trees
 RF_tuned4_CFM <- confusionMatrix(data = RF_tuned4_predict, reference = class2015, 
                                  positive = "Increase")
-RF_tuned4_CFM
 
 # Construct the ROC Curve and then calculate the Area Under the Curve (AUC)
 # for the RF with 1,000 trees.
@@ -362,7 +439,12 @@ plot(ROC_RF_tuned4, col = "red", lwd = 3,
 RF4_auc <- auc(ROC_RF_tuned4)
 cat('Area under the ROC curve for variation #4 of the Random Forest model: ', 
     round(RF4_auc, 4), '\n')
+RF_tuned4_CFM
 
+# variable importance evaluation for the 4th RF
+impRF4 <- varImp(ftRF4_tuned)
+plot(impRF4, top = 10, 
+     main = 'Variable Importance Plot for the 4th Random Forest Model')
 
 
 
@@ -379,44 +461,51 @@ set.seed(100)
 tuneGridRF4 <- expand.grid(
   .mtry = c(1, 5, 10, 15, 20),  # Same upper range
   .splitrule = c("gini", "extratrees", "hellinger"),  # Added "hellinger"
-  .min.node.size = c(0.5, 1, 5, 10)  # Lowered the minimum node size
+  .min.node.size = c(1, 5, 10)  # Same set of discrete minimum node size options
 )
 
 # Train the Random Forest model
-time_to_fit_RF5 <- system.time( ftRF_tuned5 <- train(x = data2014, y = class2014, method = "ranger",
+time_to_fit_RF5 <- system.time( ftRF5_tuned <- train(x = data2014, y = class2014, method = "ranger",
                                 metric = "ROC", tuneGrid = tuneGridRF4,
-                                num.trees = 1000,  # You can adjust this based on your findings
+                                num.trees = 1000,  
                                 trControl = ctrl, preProcess = c("center", "scale")) 
                                 )
+time_to_fit_RF5
 # Model summary
-ftRF_tuned5
+ftRF5_tuned
 # Check the final model parameters
-ftRF_tuned5$finalModel
+ftRF5_tuned$finalModel
 
+## Performance Assessment for the 5th RF variant.
 # use the model fitted on the 2014 data to predict the 2015 data
-RF_tuned5_predict <- predict(ftRF_tuned5, newdata = data2015)
+RF5_tuned_predict <- predict(ftRF5_tuned, newdata = data2015)
 
-# performance assessment for the 5th RF variant
-RF_tuned5_CFM <- confusionMatrix(data = RF_tuned5_predict, reference = class2015, 
+# create the confusion matrix
+RF5_tuned_CFM <- confusionMatrix(data = RF_tuned5_predict, 
+                                 reference = class2015, 
                                  positive = "Increase")
 
 # Construct the ROC Curve and then calculate the Area Under the Curve (AUC)
-RF_tuned5_prob <- predict(ftRF_tuned5, newdata = data2015, type = "prob")
-ROC_RF_tuned5 <- roc(response = class2015, predictor = RF_tuned5_prob$Increase,
+RF5_tuned_prob <- predict(ftRF5_tuned, newdata = data2015, type = "prob")
+ROC_RF5_tuned <- roc(response = class2015, predictor = RF5_tuned_prob$Increase,
                      levels = rev(levels(class2015)))
 
 # display the ROC curve just constructed
-plot(ROC_RF_tuned5, col = "red", lwd = 3, 
-     main = "ROC curve for the 6th RF ran on the better data")
+plot(ROC_RF5_tuned, col = "red", lwd = 3, 
+     main = "ROC curve for the 5th Random Forest")
 
 # calculate the Area Under the ROC 
-RF5_auc <- auc(ROC_RF_tuned5)
+RF5_auc <- auc(ROC_RF5_tuned)
 
-cat('Area under the ROC curve for variation #5 of the Random Forest model:', 
+cat('Area under the ROC curve for the 5th Random Forest model:', 
     round(RF5_auc, 4), '\n')
 
-RF_tuned5_CFM
+RF5_tuned_CFM
 
+# variable importance evaluation for the 5th RF
+impRF5 <- varImp(ftRF5_tuned)
+plot(impRF5, top = 10, 
+     main = 'Variable Importance Plot for the 5th Random Forest Model')
 
 
 
@@ -436,40 +525,245 @@ RF_tuned5_CFM
 set.seed(100)
 # Create a tuning grid
 tuneGridRF5 <- expand.grid(.mtry = c(1, 5, 10, 15, 20),
-                           .splitrule = c("gini", "extratrees"),
+                           .splitrule = c("gini", "extratrees", "hellinger"),
+                           .min.node.size = c(0.5, 1, 5, 10)) # added 0.5 to the set of min.node.size options
+
+# Train the Random Forest model which is the same as the 5th version
+# in every way except that 0.5 has been added to the set of min.node.size 
+# options, and the predictors are not centered or scaled.
+time_to_fit_RF6 <- system.time( ftRF6_tuned <- train(x = data2014, y = class2014, 
+                                                     method = "ranger",
+                                                     metric = "ROC", 
+                                                     tuneGrid = tuneGridRF5,
+                                                     num.trees = 1000,
+                                                     trControl = ctrl) 
+                                )
+time_to_fit_RF6
+# Model summary
+ftRF6_tuned
+# Check the final model parameters
+ftRF6_tuned$finalModel
+
+## Performance assessment for the RF using a confusion matrix,
+## an ROC curve, and the area under that curve.
+# use the model fitted on the 2014 data to predict the 2015 data
+RF6_tuned_predict <- predict(ftRF6_tuned, newdata = data2015)
+
+# construct the confusion matrix
+RF6_tuned_CFM <- confusionMatrix(data = RF6_tuned_predict, reference = class2015, 
+                                 positive = "Increase")
+
+# Construct the ROC Curve and then calculate the Area Under the Curve (AUC)
+RF6_tuned_prob <- predict(ftRF6_tuned, newdata = data2015, type = "prob")
+ROC_RF6_tuned <- roc(response = class2015, predictor = RF6_tuned_prob$Increase,
+                     levels = rev(levels(class2015)))
+# display the ROC curve just constructed
+plot(ROC_RF6_tuned, col = "red", lwd = 3, 
+     main = "ROC curve for RF version 6")
+
+plot(ROC_RF6_tuned, col = "red", lwd = 3, 
+     main = "
+     ROC curve for the 6th variation of the RF training on data preprocessed by eliminating all predictor candidates with 
+cross-correlations lower than 0.7 rather than 0.8
+     ")
+
+RF6_auc <- auc(ROC_RF6_tuned)
+cat('
+Area under the ROC curve for the 6th variation of the RF training on data
+preprocessed by eliminating all predictor candidates with 
+cross-correlations lower than 0.7 rather than 0.8:', 
+    round(RF6_auc, 4), '\n')
+
+RF6_tuned_CFM
+
+# variable importance evaluation for the 6th RF
+impRF6 <- varImp(ftRF6_tuned)
+plot(impRF6, top = 10, 
+     main = 'Variable Importance Plot for the 6th Random Forest Model')
+
+
+
+
+
+
+
+
+
+
+
+
+## RF variation #6.5
+# Set the seed for reproducibility
+set.seed(100)
+# Train the Random Forest model which is the same as the 
+# 6th version in every way except that the predictors 
+# are all centered and scaled.
+time_to_fit_RF6.5 <- system.time( ftRF6.5_tuned <- train(x = data2014, y = class2014, 
+                                                         method = "ranger",
+                                                         metric = "ROC", 
+                                                         tuneGrid = tuneGridRF5,
+                                                         num.trees = 1000,
+                                                         trControl = ctrl,
+                                                         preProcess = c("center", "scale")) 
+                                  )
+time_to_fit_RF6.5
+
+# Model summary
+ftRF6.5_tuned
+# Check the final model parameters
+ftRF6.5_tuned$finalModel
+
+## Performance assessment for the RF using a confusion matrix,
+## an ROC curve, and the area under that curve.
+# use the model fitted on the 2014 data to predict the 2015 data
+RF6.5_tuned_predict <- predict(ftRF6.5_tuned, newdata = data2015)
+
+# construct the confusion matrix
+RF6.5_tuned_CFM <- confusionMatrix(data = RF6.5_tuned_predict, 
+                                   reference = class2015, 
+                                   positive = "Increase")
+
+# Construct the ROC Curve and then calculate the Area Under the Curve (AUC)
+# for this Random Forest.
+RF6.5_tuned_prob <- predict(ftRF6.5_tuned, newdata = data2015, type = "prob")
+ROC_RF6.5_tuned <- roc(response = class2015, predictor = RF6.5_tuned_prob$Increase,
+                       levels = rev(levels(class2015)))
+
+# display the ROC curve just constructed
+plot(ROC_RF6.5_tuned, col = "red", lwd = 3, 
+     main = "ROC curve for RF version 6.5")
+
+plot(ROC_RF6.5_tuned, col = "red", lwd = 3, 
+     main = "
+     ROC curve for the 6.5th variation of the RF training on data preprocessed by eliminating all predictor candidates with 
+cross-correlations lower than 0.7 rather than 0.8
+     ")
+
+RF6.5_auc <- auc(ROC_RF6.5_tuned)
+cat('
+Area under the ROC curve for the 6.5th variation of the RF training on data
+preprocessed by eliminating all predictor candidates with 
+cross-correlations lower than 0.7 rather than 0.8:', 
+    round(RF6.5_auc, 4), '\n')
+
+RF6.5_tuned_CFM
+
+# variable importance evaluation for the RF
+impRF6.5 <- varImp(ftRF6.5_tuned)
+plot(impRF1, top = 10, 
+     main = 'Variable Importance Plot for the 6.5th Random Forest Model')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## RF variation #7
+# Set the seed for reproducibility
+set.seed(100)
+# Create a tuning grid
+tuneGridRF6 <- expand.grid(.mtry = c(1, 5, 7.5, 10, 12.5, 15, 20), # added 7.5 & 12.5 to the set of mtry options
+                           .splitrule = c("gini", "extratrees", "hellinger"),
                            .min.node.size = c(0.5, 1, 5, 10))
 
-# Train the Random Forest model with 1100 trees
-time_to_fit_RF5 <- system.time( ftRF_tuned6 <- train(x = data2014, y = class2014, method = "ranger",
-                                                     metric = "ROC", tuneGrid = tuneGridRF5,
-                                                     num.trees = 1100,  # You can adjust this based on your findings
+# Train the Random Forest model 
+time_to_fit_RF7 <- system.time( ftRF7_tuned <- train(x = data2014, y = class2014, method = "ranger",
+                                                     metric = "ROC", tuneGrid = tuneGridRF6,
+                                                     num.trees = 1000,  # You can adjust this based on your findings
                                                      trControl = ctrl, preProcess = c("center", "scale")) 
 )
 # Model summary
-ftRF_tuned6
+ftRF7_tuned
 # Check the final model parameters
-ftRF_tuned6$finalModel
+ftRF7_tuned$finalModel
 
+## Performance assessment for the RF using a confusion matrix,
+## an ROC curve, and the area under that curve.
 # use the model fitted on the 2014 data to predict the 2015 data
-RF_tuned6_predict <- predict(ftRF_tuned6, newdata = data2015)
+RF7_tuned_predict <- predict(ftRF7_tuned, newdata = data2015)
 
-# performance assessment for the RF with the default of 500 trees
-RF_tuned6_CFM <- confusionMatrix(data = RF_tuned6_predict, reference = class2015, 
+# construct the confusion matrix
+RF7_tuned_CFM <- confusionMatrix(data = RF7_tuned_predict, 
+                                 reference = class2015, 
                                  positive = "Increase")
-RF_tuned6_CFM
+
 
 # Construct the ROC Curve and then calculate the Area Under the Curve (AUC)
-# for the RF with 500 trees.
-RF_tuned6_prob <- predict(ftRF_tuned6, newdata = data2015, type = "prob")
-ROC_RF_tuned6 <- roc(response = class2015, predictor = RF_tuned6_prob$Increase,
+RF7_tuned_prob <- predict(ftRF7_tuned, newdata = data2015, type = "prob")
+ROC_RF7_tuned <- roc(response = class2015, predictor = RF7_tuned_prob$Increase,
                      levels = rev(levels(class2015)))
-plot(ROC_RF_tuned6, col = "red", lwd = 3, 
-     main = "ROC curve for RF version 6")
 
-RF6_auc <- auc(ROC_RF_tuned6)
-cat('Area under the ROC curve for variation #6 on the Random Forest model:', 
-    round(RF6_auc, 4), '\n')
+# display the ROC curve just constructed
+plot(ROC_RF7_tuned, col = "red", lwd = 3, 
+     main = "ROC curve for RF version 7")
+
+RF7_auc <- auc(ROC_RF7_tuned)
+cat('Area under the ROC curve for variation #7 on the Random Forest model:', 
+    round(RF7_auc, 4), '\n')
+
+RF7_tuned_CFM
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+## RF variation #8
+# Set the seed for reproducibility
+set.seed(100)
+# Create a tuning grid
+tuneGridRF7 <- expand.grid(.mtry = c(1, 5, 7.5, 10, 12.5, 15, 20),
+                           .splitrule = c("gini", "extratrees", "hellinger"),
+                           .min.node.size = c(0.5, 0.75, 1, 5, 7.5, 10))
+
+# Train the Random Forest model with 1000 trees
+time_to_fit_RF8 <- system.time( ftRF8_tuned <- train(x = data2014, y = class2014, method = "ranger",
+                                                     metric = "ROC", tuneGrid = tuneGridRF7,
+                                                     num.trees = 1000,  # You can adjust this based on your findings
+                                                     trControl = ctrl, preProcess = c("center", "scale")) 
+)
+# Model summary
+ftRF8_tuned
+# Check the final model parameters
+ftRF8_tuned$finalModel
+
+## Performance assessment for the RF using a confusion matrix,
+## an ROC curve, and the area under that curve.
+# use the model fitted on the 2014 data to predict the 2015 data
+RF8_tuned_predict <- predict(ftRF8_tuned, newdata = data2015)
+
+# construct the confusion matrix
+RF8_tuned_CFM <- confusionMatrix(data = RF8_tuned_predict, 
+                                 reference = class2015, 
+                                 positive = "Increase")
+
+
+# Construct the ROC Curve and then calculate the Area Under the Curve (AUC)
+RF8_tuned_prob <- predict(ftRF8_tuned, newdata = data2015, type = "prob")
+ROC_RF8_tuned <- roc(response = class2015, predictor = RF8_tuned_prob$Increase,
+                     levels = rev(levels(class2015)))
+plot(ROC_RF8_tuned, col = "red", lwd = 3, 
+     main = "ROC curve for RF version 8")
+
+RF8_auc <- auc(ROC_RF8_tuned)
+cat('Area under the ROC curve for variation #8 on the Random Forest model:', 
+    round(RF8_auc, 4), '\n')
+
+RF8_tuned_CFM
 
